@@ -1,0 +1,70 @@
+--1. Tampilkan pelanggan dengan jumlah penjualan 3 paling tinggi dengan bayaran yang mahal
+--Total pembayaran = SUM(Jumlah × Harga_Satuan)
+
+SELECT p.Nama_Pelanggan,
+       SUM(d.Jumlah * d.Harga_Satuan) AS Total_Belanja
+FROM Pelanggan p
+JOIN Penjualan n ON p.Kode_Pelanggan = n.Kode_Pelanggan
+JOIN Detail_Nota d ON n.Nomor_Nota = d.Nomor_Nota
+GROUP BY p.Kode_Pelanggan, p.Nama_Pelanggan
+ORDER BY Total_Belanja DESC
+LIMIT 3;
+
+--2. Siapa pelanggan yang masih punya hutang?
+--Hutang terjadi jika: DP < (Total Transaksi) atau Jatuh_Tempo > Tanggal hari ini dan pembayaran belum lunas
+
+SELECT p.Nama_Pelanggan,
+       n.Nomor_Nota,
+       (SUM(d.Jumlah * d.Harga_Satuan) - n.DP) AS Sisa_Hutang
+FROM Pelanggan p
+JOIN Penjualan n ON p.Kode_Pelanggan = n.Kode_Pelanggan
+JOIN Detail_Nota d ON n.Nomor_Nota = d.Nomor_Nota
+GROUP BY p.Nama_Pelanggan, n.Nomor_Nota, n.DP
+HAVING Sisa_Hutang > 0;
+
+--3. Barang apa yang paling banyak terjual bulan ini?
+--Perhitungan berdasarkan jumlah item terjual.
+
+SELECT b.Nama_Barang,
+       SUM(d.Jumlah) AS Total_Terjual
+FROM Detail_Nota d
+JOIN Barang b ON d.Kode_Barang = b.Kode_Barang
+JOIN Penjualan n ON d.Nomor_Nota = n.Nomor_Nota
+WHERE MONTH(n.Tanggal) = MONTH(CURRENT_DATE())
+  AND YEAR(n.Tanggal) = YEAR(CURRENT_DATE())
+GROUP BY b.Nama_Barang
+ORDER BY Total_Terjual DESC
+LIMIT 1;
+
+--4. Siapa saja pelanggan yang harus ditagih?
+--Pelanggan harus ditagih jika: Jatuh tempo sudah lewat DAN Pembayaran belum lunas (DP < total transaksi)
+
+SELECT p.Nama_Pelanggan,
+       n.Nomor_Nota,
+       n.Jatuh_Tempo,
+       (SUM(d.Jumlah * d.Harga_Satuan) - n.DP) AS Sisa_Hutang
+FROM Pelanggan p
+JOIN Penjualan n ON p.Kode_Pelanggan = n.Kode_Pelanggan
+JOIN Detail_Nota d ON n.Nomor_Nota = d.Nomor_Nota
+WHERE n.Jatuh_Tempo < CURRENT_DATE()
+GROUP BY p.Nama_Pelanggan, n.Nomor_Nota, n.Jatuh_Tempo, n.DP
+HAVING Sisa_Hutang > 0;
+
+--5. Siapa kasir yang melayani pelanggan paling banyak?
+--Mencari kasir yang memproses jumlah transaksi terbanyak.
+
+SELECT k.Nama_Kasir,
+       COUNT(n.Nomor_Nota) AS Total_Transaksi
+FROM Kasir k
+JOIN Penjualan n ON k.Kode_Kasir = n.Kode_Kasir
+GROUP BY k.Kode_Kasir, k.Nama_Kasir
+ORDER BY Total_Transaksi DESC
+LIMIT 1;
+
+--6. Mana barang yang stock-nya hampir habis?
+--Tabel barang harus ada atribut: Stok, Minimal_Stok (opsional)
+
+SELECT Nama_Barang, Stok
+FROM Barang
+WHERE Stok <= 10  -- contoh ambang batas
+ORDER BY Stok ASC;
